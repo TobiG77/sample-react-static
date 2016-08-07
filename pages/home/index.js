@@ -23,6 +23,7 @@ class HomePage extends React.Component {
     document.title = title;
   }
 
+
   render() {
     return (
       <Layout className={s.content}>
