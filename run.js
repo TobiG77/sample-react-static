@@ -96,14 +96,23 @@ tasks.set('build', () => {
 // Build and publish the website
 // -----------------------------------------------------------------------------
 tasks.set('publish', () => {
-  const firebase = require('firebase-tools');
-  return run('build')
-    .then(() => firebase.login({ nonInteractive: false }))
-    .then(() => firebase.deploy({
-      project: config.project,
-      cwd: __dirname,
-    }))
-    .then(() => { setTimeout(() => process.exit()); });
+  global.DEBUG = process.argv.includes('--debug') || false;
+  const s3 = require('s3');
+  return run('build').then(() => new Promise((resolve, reject) => {
+    const client = s3.createClient({
+      s3Options: {
+        region: 'ap-southeast-2',
+        sslEnabled: true,
+      },
+    });
+    const uploader = client.uploadDir({
+      localDir: 'public',
+      deleteRemoved: true,
+      s3Params: { Bucket: 'serverless-wlg' }, // serverless-wlg.s3-website-ap-southeast-2.amazonaws.com/
+    });
+    uploader.on('error', reject);
+    uploader.on('end', resolve);
+  }));
 });
 
 //
@@ -152,3 +161,5 @@ tasks.set('start', () => {
 
 // Execute the specified task or default one. E.g.: node run build
 run(/^\w/.test(process.argv[2] || '') ? process.argv[2] : 'start' /* default */);
+
+
